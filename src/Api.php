@@ -21,7 +21,7 @@ class Api
     {
         $this->app = AppFactory::create();
 
-        $this->setup($this->app);
+        $this->init($this->app);
     }
 
     public function run()
@@ -29,7 +29,7 @@ class Api
         $this->app->run();
     }
 
-    function getDatabaseSettings(): DatabaseSettings
+    static function getDatabaseSettings(): DatabaseSettings
     {
         $settings = new DatabaseSettings();
         $settings->username = getenv('MYSQL_USERNAME');
@@ -48,18 +48,18 @@ class Api
         return $settings;
     }
 
-    private function setup(App $app): App
+    private function init(App $app): App
     {
-        $pdo = (new PdoFactory($this->getDatabaseSettings()))->createPdo();
-        $counterApi = new CounterApi(new CounterService($pdo));
+        $pdo = (new PdoFactory(Api::getDatabaseSettings()))->createPdo();
+        $setupApi = new SetupApi(new SetupService($pdo));
 
         $app->options('/{routes:.*}', function (Request $request, Response $response) {
             // CORS Pre-Flight OPTIONS Request Handler
             return $response;
         });
 
-        $app->group('/api/counters', function (Group $group) use ($counterApi) {
-            $counterApi->setup($group);
+        $app->group('/api/setup', function (Group $group) use ($setupApi) {
+            $setupApi->init($group);
         });
 
         return $app;

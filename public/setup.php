@@ -1,0 +1,21 @@
+<?php
+
+use App\Api;
+use App\PdoFactory;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+
+$email = $_REQUEST['email'];
+$secret = $_REQUEST['secret'];
+
+$pdo = (new PdoFactory(Api::getDatabaseSettings()))->createPdo();
+$setupService = new \App\SetupService($pdo);
+
+try {
+    $setupService->setupStep2($email, $secret);
+} catch (\Exception $e) {
+    header("HTTP/1.0 404 Not found");
+    die("Nope!");
+}
+echo "OK!";

@@ -14,17 +14,18 @@
 <body>
 <h1>FED22STO Data Interaction</h1>
 
-<h2>Counters</h2>
-<form id="addCounterForm">
-    <div class="container" id="counters">
-        <div class="row" id="addCounterRow">
-            <div class="col-sm">
-            </div>
+<h2>Create your database!</h2>
+
+<p>Enter your @hyperisland.se e-mail address and click the button to get an e-mail with further instructions!</p>
+
+<form id="addDatabaseForm">
+    <div class="container">
+        <div class="row" >
             <div class="col-sm form-group">
-                <input class="form-control" id="counterName" required>
+                <input class="form-control" name="email" type="email" placeholder="you@hyperisland.se" pattern="^.*@(hyperisland|activout)\.se$" required>
             </div>
             <div class="col-sm">
-                <button class="btn btn-sm btn-success">Create new counter</button>
+                <button class="btn btn-sm btn-success">Submit</button>
             </div>
         </div>
 
@@ -46,6 +47,6 @@
 -->
 
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
-<script src="counters.js"></script>
+<script src="setup.js"></script>
 </body>
 </html>

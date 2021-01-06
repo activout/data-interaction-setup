@@ -1,0 +1,22 @@
+version: '3.5'
+secrets:
+  mysql-client-key.pem:
+    file: ./mysql/client-key.pem
+  mysql-client-cert.pem:
+    file: ./mysql/client-cert.pem
+  mysql-server-ca.pem:
+    file: ./mysql/server-ca.pem
+services:
+  setup:
+    restart: always
+    build:
+      context: .
+    environment:
+      - VIRTUAL_HOST=data-interaction-setup.activout.se
+    env_file:
+      - ./mysql.env
+      - ./sendgrid.env
+    secrets:
+      - mysql-client-key.pem
+      - mysql-client-cert.pem
+      - mysql-server-ca.pem
