@@ -113,7 +113,7 @@ class SetupService
             $email->addTo($user->email);
             $email->addContent("text/plain", "See the HTML");
             $email->addContent( // https://FED22STO.activout.se
-                "text/html", "Use this link to continue: <a href=\"$root/setup.php?email=$encodedEmail&secret=$encodedSecret&XDEBUG_SESSION=asd\">Create my databases and send me my password</a>"
+                "text/html", "Use this link to continue: <a href=\"$root/setup.php?email=$encodedEmail&secret=$encodedSecret\">Create my databases and send me my password</a>"
             );
             $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
             $response = $sendgrid->send($email);
