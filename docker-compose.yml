@@ -15,9 +15,9 @@ services:
       context: .
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/google-application-credentials.json
-      - MYSQL_SSL_CA=/run/secrets/server-ca.pem
-      - MYSQL_SSL_CERT=/run/secrets/client-cert.pem
-      - MYSQL_SSL_KEY=/run/secrets/client-key.pem
+      - MYSQL_SSL_CA=/run/secrets/mysql-server-ca.pem
+      - MYSQL_SSL_CERT=/run/secrets/mysql-client-cert.pem
+      - MYSQL_SSL_KEY=/run/secrets/mysql-client-key.pem
       - VIRTUAL_HOST=data-interaction-setup.activout.se
     env_file:
       - ./mysql.env
