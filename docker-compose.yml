@@ -7,7 +7,7 @@ secrets:
   mysql-server-ca.pem:
     file: ./mysql/server-ca.pem
 services:
-  setup:
+  web:
     restart: always
     build:
       context: .
