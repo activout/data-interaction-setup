@@ -98,6 +98,14 @@ class SetupService
         $encodedEmail = urlencode($user->email);
         $encodedSecret = urlencode($user->secret);
 
+        $host = $_REQUEST['HTTP_HOST'];     // HACK!
+
+        if ($host == "localhost") {
+            $root = "http://localhost:8080";
+        } else {
+            $root = "https://data-interaction-setup.activout.se";
+        }
+
         try {
             $email = new Mail();
             $email->setFrom("david@activout.se", "David Eriksson");
@@ -105,7 +113,7 @@ class SetupService
             $email->addTo($user->email);
             $email->addContent("text/plain", "See the HTML");
             $email->addContent( // https://FED22STO.activout.se
-                "text/html", "Use this link to continue: <a href=\"http://localhost:8080/setup.php?email=$encodedEmail&secret=$encodedSecret&XDEBUG_SESSION=asd\">Create my databases and send me my password</a>"
+                "text/html", "Use this link to continue: <a href=\"$root/setup.php?email=$encodedEmail&secret=$encodedSecret&XDEBUG_SESSION=asd\">Create my databases and send me my password</a>"
             );
             $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
             $response = $sendgrid->send($email);
