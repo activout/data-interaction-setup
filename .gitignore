@@ -72,3 +72,4 @@ fabric.properties
 
 # PHP specific
 /vendor
+*.env
