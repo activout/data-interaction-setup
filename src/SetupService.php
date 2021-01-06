@@ -98,7 +98,7 @@ class SetupService
         $encodedEmail = urlencode($user->email);
         $encodedSecret = urlencode($user->secret);
 
-        $host = $_REQUEST['HTTP_HOST'];     // HACK!
+        $host = $_SERVER['HTTP_HOST'];     // HACK!
 
         if ($host == "localhost") {
             $root = "http://localhost:8080";
