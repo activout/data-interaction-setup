@@ -20,3 +20,11 @@ services:
       - mysql-client-key.pem
       - mysql-client-cert.pem
       - mysql-server-ca.pem
+    networks:
+      - default
+      - nginxproxy
+
+networks:
+  nginxproxy:
+    external:
+      name: nginxproxy_default
