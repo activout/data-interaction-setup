@@ -5,13 +5,23 @@ namespace App;
 
 
 use Exception;
+use Google\Client;
+use Google_Client;
+use Google_Service_SQLAdmin;
+use Google_Service_SQLAdmin_SslCert;
+use Google_Service_SQLAdmin_SslCertsInsertRequest;
 use PDO;
 use PDOStatement;
+use SendGrid\Mail\Attachment;
 use SendGrid\Mail\Mail;
+use SendGrid\Mail\TypeException;
 
 class SetupService
 {
     private PDO $pdo;
+
+    private string $googleProject = "data-interaction-300815";
+    private string $googleInstance = "data-interaction";
 
     /**
      * Constructor.
@@ -61,7 +71,7 @@ class SetupService
 
         $user = $this->createOrUpdateUser($email);
 
-        $this->sendEmail($user);
+        $this->verifyEmailAddress($user);
     }
 
     private static function endsWith($haystack, $needle): bool
@@ -78,7 +88,7 @@ class SetupService
     {
         try {
             $secret = base64_encode(random_bytes(32));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw new SetupException("Failed to generate secret", 0, $e);
         }
 
@@ -93,7 +103,7 @@ class SetupService
      * @param UserModel $user
      * @throws SetupException
      */
-    private function sendEmail(UserModel $user)
+    private function verifyEmailAddress(UserModel $user)
     {
         $encodedEmail = urlencode($user->email);
         $encodedSecret = urlencode($user->secret);
@@ -105,24 +115,9 @@ class SetupService
         } else {
             $root = "https://data-interaction-setup.activout.se";
         }
+        $html = "Use this link to continue: <a href=\"$root/setup.php?email=$encodedEmail&secret=$encodedSecret\">Create my databases and send me my password</a>";
 
-        try {
-            $email = new Mail();
-            $email->setFrom("david@activout.se", "David Eriksson");
-            $email->setSubject("Database setup for FED22STO Data Interaction");
-            $email->addTo($user->email);
-            $email->addContent("text/plain", "See the HTML");
-            $email->addContent( // https://FED22STO.activout.se
-                "text/html", "Use this link to continue: <a href=\"$root/setup.php?email=$encodedEmail&secret=$encodedSecret\">Create my databases and send me my password</a>"
-            );
-            $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
-            $response = $sendgrid->send($email);
-            error_log("{$response->statusCode()}");
-            error_log(print_r($response->headers(), true));
-            error_log($response->body());
-        } catch (\Exception $e) {
-            throw new SetupException("SendGrid error", 0, $e);
-        }
+        $this->sendEmail($user, "Verify e-mail", $html);
     }
 
     /**
@@ -138,6 +133,29 @@ class SetupService
         }
 
         $prefix = preg_replace(["/@.*/", "/[^a-zA-Z0-9]*/"], "", $email);
+
+
+        $client = new Google_Client();
+        $client->setApplicationName("data-interaction-setup");
+        $client->useApplicationDefaultCredentials();
+        $client->addScope([\Google_Service_SQLAdmin::CLOUD_PLATFORM, \Google_Service_SQLAdmin::SQLSERVICE_ADMIN]);
+
+        $service = new Google_Service_SQLAdmin($client);
+
+        $sslCerts = $service->sslCerts->listSslCerts($this->googleProject, $this->googleInstance);
+        /** @var Google_Service_SQLAdmin_SslCert $sslCert */
+        foreach ($sslCerts as $sslCert) {
+            if ($sslCert->commonName == $prefix) {
+                $deleteResponse = $service->sslCerts->delete($this->googleProject, $this->googleInstance, $sslCert->sha1Fingerprint);
+                $this->waitForOperation($service, $deleteResponse);
+                break;
+            }
+        }
+
+        $request = new Google_Service_SQLAdmin_SslCertsInsertRequest();
+        $request->commonName = $prefix;
+        $response = $service->sslCerts->insert($this->googleProject, $this->googleInstance, $request);
+
         $testName = $prefix . "_test";
         $prodName = $prefix . "_prod";
 
@@ -147,7 +165,7 @@ class SetupService
         try {
             $testPassword = substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes(32))), 0, 16);
             $prodPassword = substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes(32))), 0, 16);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw new SetupException("Failed to generate passwords", 0, $e);
         }
 
@@ -156,6 +174,47 @@ class SetupService
 
         $this->grantAccessToDatabase($testName, $testName);
         $this->grantAccessToDatabase($prodName, $prodName);
+
+        $html = <<<EOF
+<p>See attachments for MySQL SSL files.</p>
+<h2>Test database</h2>
+<h3>Database name</h3>
+<p>$testName</p>
+<h3>Username</h3>
+<p>$testName</p>
+<h3>Password</h3>
+<p>$testPassword</p>
+<h2>Production database</h2>
+<h3>Database name</h3>
+<p>$prodName</p>
+<h3>Username</h3>
+<p>$prodName</p>
+<h3>Password</h3>
+<p>$prodPassword</p>
+EOF;
+
+        try {
+            $this->sendEmail($user, "Your database credentials", $html, [
+                new Attachment(
+                    base64_encode($response->getServerCaCert()->cert),
+                    'application/x-pem-file',
+                    "server-ca.pem"
+                ),
+                new Attachment(
+                    base64_encode($response->getClientCert()->getCertInfo()->cert),
+                    'application/x-pem-file',
+                    "client-cert.pem"
+                ),
+                new Attachment(
+                    base64_encode($response->getClientCert()->certPrivateKey),
+                    'application/x-pem-file',
+                    "client-key.pem"
+                )
+            ]);
+        } catch (TypeException $e) {
+            throw new SetupException("SendGrid error", 0, $e);
+        }
+
     }
 
     private function createDatabase(string $databaseName)
@@ -169,15 +228,71 @@ class SetupService
     private function createUser(string $userName, string $password)
     {
         // SQL injection danger zone!
-        $query = "CREATE USER IF NOT EXISTS '$userName'@'%' IDENTIFIED BY '$password';";
+        $query = "CREATE USER IF NOT EXISTS '$userName'@'%';";
         $statement = $this->prepare($query);
         $statement->execute();
+
+        $this->setPassword($userName, $password);
     }
 
     private function grantAccessToDatabase(string $databaseName, string $userName)
     {
         // SQL injection danger zone!
         $query = "GRANT ALL PRIVILEGES ON `$databaseName`.* TO '$userName'@'%';";
+        $statement = $this->prepare($query);
+        $statement->execute();
+    }
+
+    /**
+     * @param UserModel $user
+     * @param string $title
+     * @param string $html
+     * @param $attachments
+     * @throws SetupException
+     */
+    private function sendEmail(UserModel $user, string $title, string $html, $attachments = null): void
+    {
+        try {
+            $email = new Mail();
+            $email->setFrom("david+FED22STO@activout.se", "David Eriksson");
+            $email->setSubject("[FED22STO Data Interaction] {$title}");
+            $email->addTo($user->email);
+            $email->addContent("text/plain", "See the HTML");
+            $email->addContent(
+                "text/html", $html
+            );
+            if (isset($attachments)) {
+                $email->addAttachments($attachments);
+            }
+
+            $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
+            $response = $sendgrid->send($email);
+            error_log("{$response->statusCode()}");
+            error_log(print_r($response->headers(), true));
+            error_log($response->body());
+        } catch (Exception $e) {
+            throw new SetupException("SendGrid error", 0, $e);
+        }
+    }
+
+    /**
+     * @param Google_Service_SQLAdmin $service
+     * @param \Google_Service_SQLAdmin_Operation $operation
+     */
+    private function waitForOperation(Google_Service_SQLAdmin $service, \Google_Service_SQLAdmin_Operation $operation): void
+    {
+        $delay = 1;
+        while ($operation->status != "DONE") {
+            $delay *= 2;
+            sleep($delay);
+            $operation = $service->operations->get($this->googleProject, $operation->name);
+        }
+    }
+
+    private function setPassword(string $userName, string $password)
+    {
+        // SQL injection danger zone!
+        $query = "ALTER USER '$userName'@'%' IDENTIFIED BY '$password';";
         $statement = $this->prepare($query);
         $statement->execute();
     }

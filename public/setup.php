@@ -18,4 +18,5 @@ try {
     header("HTTP/1.0 404 Not found");
     die("Nope!");
 }
-echo "OK!";
+echo "Success! Please check your e-mail again!";
+

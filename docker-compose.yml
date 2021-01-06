@@ -6,12 +6,18 @@ secrets:
     file: ./mysql/client-cert.pem
   mysql-server-ca.pem:
     file: ./mysql/server-ca.pem
+  google-application-credentials.json:
+    file: ./mysql/data-interaction-300815-9070dcdc8438.json
 services:
   web:
     restart: always
     build:
       context: .
     environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/google-application-credentials.json
+      - MYSQL_SSL_CA=/run/secrets/server-ca.pem
+      - MYSQL_SSL_CERT=/run/secrets/client-cert.pem
+      - MYSQL_SSL_KEY=/run/secrets/client-key.pem
       - VIRTUAL_HOST=data-interaction-setup.activout.se
     env_file:
       - ./mysql.env
@@ -20,6 +26,7 @@ services:
       - mysql-client-key.pem
       - mysql-client-cert.pem
       - mysql-server-ca.pem
+      - google-application-credentials.json
     networks:
       - default
       - nginxproxy
