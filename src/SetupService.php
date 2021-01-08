@@ -63,8 +63,9 @@ class SetupService
      */
     public function beginSetup($email)
     {
-        if (!SetupService::endsWith($email, "@hyperisland.se") &&
-            !SetupService::endsWith($email, "@activout.se")
+        if (!SetupService::endsWith($email, "@activout.se") &&
+            !SetupService::endsWith($email, "@hyperisland.com") &&
+            !SetupService::endsWith($email, "@hyperisland.se")
         ) {
             throw new SetupException("Invalid e-mail address");
         }
@@ -110,7 +111,7 @@ class SetupService
 
         $host = $_SERVER['HTTP_HOST'];     // HACK!
 
-        if ($host == "localhost") {
+        if ($host == "localhost:8080") {
             $root = "http://localhost:8080";
         } else {
             $root = "https://data-interaction-setup.activout.se";
@@ -131,6 +132,8 @@ class SetupService
         if (!$user) {
             throw new SetupException("User not found or secret has expired");
         }
+
+        $this->expireSecret($email);
 
         $prefix = preg_replace(["/@.*/", "/[^a-zA-Z0-9]*/"], "", $email);
 
@@ -295,6 +298,13 @@ EOF;
         $query = "ALTER USER '$userName'@'%' IDENTIFIED BY '$password';";
         $statement = $this->prepare($query);
         $statement->execute();
+    }
+
+    private function expireSecret(string $email)
+    {
+        $query = "update users set secret=null where email=:email;";
+        $statement = $this->prepare($query);
+        $statement->execute(compact('email'));
     }
 }
 

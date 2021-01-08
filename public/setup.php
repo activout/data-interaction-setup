@@ -16,7 +16,7 @@ try {
     $setupService->setupStep2($email, $secret);
 } catch (\Exception $e) {
     header("HTTP/1.0 404 Not found");
-    die("Nope!");
+    die("Failure! Maybe this link has already been used?");
 }
 echo "Success! Please check your e-mail again!";
 

@@ -9,17 +9,27 @@ $(function () {
         $("#addDatabaseForm").submit(function (event) {
             event.target.setAttribute('disabled̈́', 'disabled');
 
-            const data = $(this).serializeArray();
+            const $this = $(this);
+            const data = $this.serializeArray();
 
             $.ajax({
                 type: 'POST',
                 url: apiRoot,
                 data: JSON.stringify({'email': data[0]['value']}),
-                success: function (counter, status) {
-                    event.target.removeAttribute('disabled̈́');
+                success: function () {
+                    setTimeout(function () {
+                        $this.hide();
+                        $("#success").removeClass("d-none");
+                    })
                 },
-                contentType: "application/json",
-                dataType: 'json'
+                error: function (request, status, error) {
+                    event.target.removeAttribute('disabled̈́');
+                    console.error(error);
+                    setTimeout(function () {
+                        $("#failure").removeClass("d-none");
+                    })
+                },
+                contentType: "application/json"
             });
 
             event.preventDefault();

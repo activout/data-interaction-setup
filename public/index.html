@@ -20,9 +20,10 @@
 
 <form id="addDatabaseForm">
     <div class="container">
-        <div class="row" >
+        <div class="row">
             <div class="col-sm form-group">
-                <input class="form-control" name="email" type="email" placeholder="you@hyperisland.se" pattern="^.*@(hyperisland|activout)\.se$" required>
+                <input class="form-control" name="email" type="email" placeholder="you@hyperisland.se"
+                       pattern="^.*@(hyperisland\.(com|se)|activout\.se)$" required>
             </div>
             <div class="col-sm">
                 <button class="btn btn-sm btn-success">Submit</button>
@@ -31,6 +32,14 @@
 
     </div>
 </form>
+
+<div class="container d-none" id="success">
+    <p><strong>Success, please check your e-mail to continue!</strong></p>
+</div>
+
+<div class="container d-none" id="failure">
+    <p><strong>Something went wrong :(</strong></p>
+</div>
 
 
 <!-- Optional JavaScript; choose one of the two! -->
