@@ -10,9 +10,8 @@
     }
   ],
   "require": {
-    "php": "^7.4",
+    "php": "^8.0",
     "ext-curl": "*",
-    "ext-json": "*",
     "ext-pdo": "*",
     "ext-pdo_mysql": "*",
     "sendgrid/sendgrid": "~7",
