@@ -143,22 +143,6 @@ class SetupService
         $client->useApplicationDefaultCredentials();
         $client->addScope([\Google_Service_SQLAdmin::CLOUD_PLATFORM, \Google_Service_SQLAdmin::SQLSERVICE_ADMIN]);
 
-        $service = new Google_Service_SQLAdmin($client);
-
-        $sslCerts = $service->sslCerts->listSslCerts($this->googleProject, $this->googleInstance);
-        /** @var Google_Service_SQLAdmin_SslCert $sslCert */
-        foreach ($sslCerts as $sslCert) {
-            if ($sslCert->commonName == $prefix) {
-                $deleteResponse = $service->sslCerts->delete($this->googleProject, $this->googleInstance, $sslCert->sha1Fingerprint);
-                $this->waitForOperation($service, $deleteResponse);
-                break;
-            }
-        }
-
-        $request = new Google_Service_SQLAdmin_SslCertsInsertRequest();
-        $request->commonName = $prefix;
-        $response = $service->sslCerts->insert($this->googleProject, $this->googleInstance, $request);
-
         $testName = $prefix . "_test";
         $prodName = $prefix . "_prod";
 
@@ -179,7 +163,6 @@ class SetupService
         $this->grantAccessToDatabase($prodName, $prodName);
 
         $html = <<<EOF
-<p>See attachments for MySQL SSL files.</p>
 <h2>Test database</h2>
 <h3>Database name</h3>
 <p>$testName</p>
@@ -197,23 +180,7 @@ class SetupService
 EOF;
 
         try {
-            $this->sendEmail($user, "Your database credentials", $html, [
-                new Attachment(
-                    base64_encode($response->getServerCaCert()->cert),
-                    'application/x-pem-file',
-                    "server-ca.pem"
-                ),
-                new Attachment(
-                    base64_encode($response->getClientCert()->getCertInfo()->cert),
-                    'application/x-pem-file',
-                    "client-cert.pem"
-                ),
-                new Attachment(
-                    base64_encode($response->getClientCert()->certPrivateKey),
-                    'application/x-pem-file',
-                    "client-key.pem"
-                )
-            ]);
+            $this->sendEmail($user, "Your database credentials", $html);
         } catch (TypeException $e) {
             throw new SetupException("SendGrid error", 0, $e);
         }
